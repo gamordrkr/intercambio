@@ -220,3 +220,31 @@ def admin_reset():
 if __name__ == "__main__":
     init_db()
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)
+
+@app.route("/admin", methods=["GET"])
+def admin_view():
+    key = request.args.get("key")
+    if key != os.environ.get("ADMIN_KEY"):
+        return "Unauthorized", 401
+
+    with get_conn() as conn:
+        assignments = conn.execute("SELECT giver, receiver FROM assignments").fetchall()
+        revealed = conn.execute("SELECT giver, revealed_at FROM revealed").fetchall()
+
+    html = "<h2>Asignaciones</h2><ul>"
+    for a in assignments:
+        html += f"<li>{a['giver']} ➜ {a['receiver']}</li>"
+    html += "</ul><h2>Ya revelaron</h2><ul>"
+    for r in revealed:
+        html += f"<li>{r['giver']} ({r['revealed_at']})</li>"
+    html += "</ul>"
+
+    html += """
+    <form method="POST" action="/admin/reset">
+      <input type="hidden" name="admin_key" value="{key}">
+      <button type="submit">RESET RIFA</button>
+    </form>
+    """.format(key=key)
+
+    return html
+
